@@ -1,0 +1,30 @@
+
+# Compiled binaries and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries (created by 'go test -c')
+*.test
+
+# Output of the go coverage tool
+*.out
+*.coverprofile
+profile.cov
+
+# Dependency directories
+# Note: It is standard practice to NOT ignore vendor/ if you use Go modules 
+# and want reproducible builds, but some projects still prefer to ignore it.
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment files
+.env
+
+# macOS files
+.DS_Store
