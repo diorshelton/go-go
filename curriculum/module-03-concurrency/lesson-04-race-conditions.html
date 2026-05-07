@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M3 L4 — Race Conditions</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--red:#f85149;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}
+  .shell{background:#000;border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin:12px 0;font-family:var(--mono);font-size:13px;color:#e6edf3}
+  .shell .prompt{color:var(--green)}.shell .out{color:var(--red)}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 3</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 4 — Race Conditions & the Race Detector</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 03 · Lesson 04 of 04</div>
+  <h1>Race Conditions & the Go Race Detector</h1>
+  <p class="subtitle">A race condition happens when two goroutines access shared state simultaneously and at least one is writing. The result is undefined — not just "sometimes wrong." Go ships with a race detector that catches these at runtime.</p>
+
+  <h2>What a race condition looks like</h2>
+  <p>Consider a cache without any locking:</p>
+
+  <div class="code">
+<span class="kw">type</span> <span class="typ">UnsafeStore</span> <span class="kw">struct</span> {
+    data <span class="kw">map</span>[<span class="typ">string</span>]json.<span class="typ">RawMessage</span>
+}
+
+<span class="kw">func</span> (s *<span class="typ">UnsafeStore</span>) <span class="fn">Get</span>(key <span class="typ">string</span>) json.<span class="typ">RawMessage</span> {
+    <span class="kw">return</span> s.data[key]  <span class="cmt">// no lock</span>
+}
+
+<span class="kw">func</span> (s *<span class="typ">UnsafeStore</span>) <span class="fn">Set</span>(key <span class="typ">string</span>, val json.<span class="typ">RawMessage</span>) {
+    s.data[key] = val   <span class="cmt">// no lock</span>
+}
+  </div>
+
+  <p>If goroutine A calls <code>Set("foo", ...)</code> while goroutine B calls <code>Get("foo")</code>, both are accessing the internal map state simultaneously. Go's map is not safe for concurrent access — this is a data race. The Go spec says: undefined behavior. In practice: crashes, silent data corruption, or reading half-written values.</p>
+
+  <h2>The race detector</h2>
+  <p>Go ships with a built-in race detector based on ThreadSanitizer. Enable it with the <code>-race</code> flag:</p>
+
+  <div class="shell">
+    <div><span class="prompt">$</span> go test -race ./...</div>
+    <div><span class="prompt">$</span> go run -race ./cmd/server/main.go</div>
+    <div><span class="prompt">$</span> go build -race -o server ./cmd/server/main.go</div>
+  </div>
+
+  <p>When a race is detected at runtime, you get output like this:</p>
+
+  <div class="shell">
+    <div class="out">==================</div>
+    <div class="out">WARNING: DATA RACE</div>
+    <div class="out">Write at 0x00c0001a4000 by goroutine 7:</div>
+    <div class="out">  main.(*UnsafeStore).Set(...)</div>
+    <div class="out">      /path/to/store.go:14</div>
+    <div class="out">Previous read at 0x00c0001a4000 by goroutine 8:</div>
+    <div class="out">  main.(*UnsafeStore).Get(...)</div>
+    <div class="out">      /path/to/store.go:10</div>
+    <div class="out">==================</div>
+  </div>
+
+  <p>It tells you the two goroutines, the exact lines of code, and which was the write and which was the read. This is what you run against go-go's tests to verify your mutex usage is correct.</p>
+
+  <div class="callout">
+    <div class="callout-label">The race detector only fires on execution paths that run</div>
+    A race condition that only occurs under high concurrency won't be caught unless your test actually exercises that path. Always write tests that spawn multiple goroutines accessing the store simultaneously — not just sequential tests.
+  </div>
+
+  <h2>Race detector test for the store</h2>
+
+  <div class="code">
+<span class="kw">func</span> <span class="fn">TestStoreConcurrent</span>(t *testing.<span class="typ">T</span>) {
+    s := store.<span class="fn">New</span>()
+    <span class="kw">var</span> wg sync.<span class="typ">WaitGroup</span>
+
+    <span class="cmt">// 50 concurrent writers</span>
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; <span class="num">50</span>; i++ {
+        wg.<span class="fn">Add</span>(<span class="num">1</span>)
+        <span class="kw">go func</span>(n <span class="typ">int</span>) {
+            <span class="kw">defer</span> wg.<span class="fn">Done</span>()
+            key := fmt.<span class="fn">Sprintf</span>(<span class="str">"key%d"</span>, n)
+            s.<span class="fn">Set</span>(key, json.<span class="typ">RawMessage</span>(<span class="str">`"value"`</span>))
+        }(i)
+    }
+
+    <span class="cmt">// 50 concurrent readers</span>
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; <span class="num">50</span>; i++ {
+        wg.<span class="fn">Add</span>(<span class="num">1</span>)
+        <span class="kw">go func</span>(n <span class="typ">int</span>) {
+            <span class="kw">defer</span> wg.<span class="fn">Done</span>()
+            s.<span class="fn">Get</span>(fmt.<span class="fn">Sprintf</span>(<span class="str">"key%d"</span>, n))
+        }(i)
+    }
+
+    wg.<span class="fn">Wait</span>()
+}
+  </div>
+
+  <p>Run this with <code>go test -race ./cache/...</code>. If your mutex is correct, no race is detected. If you remove the locks, the race detector fires immediately.</p>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">The race detector didn't fire on a single-goroutine test of your store. Does that mean there's no race condition?</div>
+    <div class="qh">The race detector instruments memory accesses at runtime. What does it need to fire?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>No.</strong> The race detector only fires when it observes a race — two goroutines actually accessing the same memory concurrently at runtime. A test that calls Get() and Set() sequentially in one goroutine will never trigger it, even if the code has no mutex at all. The race detector is a dynamic tool, not a static analyzer. You must write tests that actually exercise concurrent access patterns to get meaningful coverage.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">Should you run go-go with -race in production? Why or why not?</div>
+    <div class="qh">The race detector adds memory and CPU overhead. Think about the trade-off.</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Generally no — it's a development and testing tool.</strong> The race detector typically adds 5–10× memory overhead and 2–20× CPU overhead per memory access. For a production server under load, that's unacceptable. Use it during development, in CI, and in load tests. Once you're confident your synchronization is correct, build without -race for production. Some teams run a small percentage of production traffic through -race builds as a canary — but that's an advanced pattern.</div>
+  </div>
+
+  <h2>Module 3 complete</h2>
+  <p>You understand the concurrency model: goroutines, channels, worker pools, RWMutex, and race conditions. Module 4 is where all of this becomes real — you'll implement each component of go-go and wire them together. The concepts from all three prior modules converge there.</p>
+
+  <div class="footer">
+    <a href="lesson-03-rwmutex.html" class="nbtn">← Lesson 3</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="exercises/exercise-01-pool-design.html" class="nbtn p">Exercise 1 — Pool Design →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m03_l04';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

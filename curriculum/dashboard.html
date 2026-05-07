@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>go-go — Learning Dashboard</title>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --accent:    #388bfd;
+    --accent-dim:#1f6feb;
+    --green:     #3fb950;
+    --yellow:    #d29922;
+    --red:       #f85149;
+    --radius:    6px;
+    --mono:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .header { border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-title span { color: var(--accent); }
+  .header-meta { color: var(--muted); font-size: 13px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+
+  .overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 36px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 700; font-family: var(--mono); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.yellow { color: var(--yellow); }
+
+  .section-heading { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  .modules { display: flex; flex-direction: column; gap: 12px; margin-bottom: 36px; }
+
+  .module-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s; }
+  .module-card:hover { border-color: var(--accent-dim); }
+  .module-card.completed { border-left: 3px solid var(--green); }
+  .module-card.in-progress { border-left: 3px solid var(--accent); }
+  .module-card.locked { border-left: 3px solid var(--border); opacity: 0.55; pointer-events: none; }
+
+  .module-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+  .module-number { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .module-title { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .module-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .badge-done { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-active { background: rgba(56,139,253,0.15); color: var(--accent); border: 1px solid rgba(56,139,253,0.3); }
+  .badge-locked { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+
+  .module-desc { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+  .fill-green { background: var(--green); }
+  .fill-accent { background: var(--accent); }
+
+  .module-lessons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .lesson-chip { font-size: 11px; font-family: var(--mono); padding: 3px 8px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+  .lesson-chip.done { color: var(--green); border-color: rgba(63,185,80,0.3); }
+  .lesson-chip.active { color: var(--accent); border-color: rgba(56,139,253,0.3); }
+  .lesson-chip a { color: inherit; }
+
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 36px; }
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .info-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .info-row-label { color: var(--muted); min-width: 90px; }
+  .info-row-value { font-family: var(--mono); color: var(--text); }
+
+  .cta { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; padding: 10px 20px; border-radius: var(--radius); border: none; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+  .cta:hover { background: var(--accent-dim); text-decoration: none; color: #fff; }
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-title"><span>go-go</span> — HTTP/1.1 from scratch</div>
+  <div class="header-meta">4 modules · 2 hrs/day · 4 weeks</div>
+</header>
+<main class="container">
+  <div class="overview">
+    <div class="stat-card"><div class="stat-label">Progress</div><div class="stat-value accent" id="pct">0%</div></div>
+    <div class="stat-card"><div class="stat-label">Modules Done</div><div class="stat-value green" id="modsDone">0 / 4</div></div>
+    <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value" id="sessions">0</div></div>
+    <div class="stat-card"><div class="stat-label">Days Left</div><div class="stat-value yellow" id="daysLeft">28</div></div>
+  </div>
+
+  <div class="section-heading">Curriculum</div>
+  <div class="modules">
+
+    <div class="module-card in-progress" id="m01">
+      <div class="module-header">
+        <div><div class="module-number">Module 01</div><div class="module-title">The Network Foundation</div></div>
+        <span class="module-badge badge-active">Start here</span>
+      </div>
+      <div class="module-desc">TCP connections, the 3-way handshake, and how Go's net package accepts and hands off connections. The layer everything else sits on.</div>
+      <div class="progress-bar"><div class="progress-fill fill-accent" id="p01" style="width:0%"></div></div>
+      <div class="module-lessons">
+        <div class="lesson-chip active"><a href="module-01-network-foundation/lesson-01-tcp-connections.html">L1 — TCP & Connections</a></div>
+        <div class="lesson-chip"><a href="module-01-network-foundation/lesson-02-three-way-handshake.html">L2 — 3-Way Handshake</a></div>
+        <div class="lesson-chip"><a href="module-01-network-foundation/lesson-03-net-listen-accept.html">L3 — net.Listen & Accept</a></div>
+        <div class="lesson-chip"><a href="module-01-network-foundation/exercises/exercise-01-tcp-quiz.html">Ex1 — TCP Quiz</a></div>
+        <div class="lesson-chip"><a href="module-01-network-foundation/exercises/exercise-02-tcp-echo-server.html">Ex2 — TCP Echo Server</a></div>
+      </div>
+    </div>
+
+    <div class="module-card locked" id="m02">
+      <div class="module-header">
+        <div><div class="module-number">Module 02</div><div class="module-title">HTTP/1.1 as Raw Bytes</div></div>
+        <span class="module-badge badge-locked">Locked</span>
+      </div>
+      <div class="module-desc">What a request looks like over the wire. Request line, headers, body, keep-alive — all as bytes you'll parse by hand.</div>
+      <div class="progress-bar"><div class="progress-fill fill-accent" id="p02" style="width:0%"></div></div>
+      <div class="module-lessons">
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/lesson-01-request-line.html">L1 — Request Line</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/lesson-02-headers.html">L2 — Headers</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/lesson-03-body-content-length.html">L3 — Body & Content-Length</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/lesson-04-keep-alive.html">L4 — Keep-Alive</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/exercises/exercise-01-request-dissector.html">Ex1 — Dissector</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/exercises/exercise-02-spot-malformed.html">Ex2 — Spot Malformed</a></div>
+        <div class="lesson-chip"><a href="module-02-http-raw-bytes/exercises/exercise-03-http-quiz.html">Ex3 — HTTP Quiz</a></div>
+      </div>
+    </div>
+
+    <div class="module-card locked" id="m03">
+      <div class="module-header">
+        <div><div class="module-number">Module 03</div><div class="module-title">Concurrency in Go</div></div>
+        <span class="module-badge badge-locked">Locked</span>
+      </div>
+      <div class="module-desc">Goroutines, channels, worker pools, and RWMutex — the concurrency primitives that make go-go handle many connections safely.</div>
+      <div class="progress-bar"><div class="progress-fill fill-accent" id="p03" style="width:0%"></div></div>
+      <div class="module-lessons">
+        <div class="lesson-chip"><a href="module-03-concurrency/lesson-01-goroutines-channels.html">L1 — Goroutines & Channels</a></div>
+        <div class="lesson-chip"><a href="module-03-concurrency/lesson-02-worker-pools.html">L2 — Worker Pools</a></div>
+        <div class="lesson-chip"><a href="module-03-concurrency/lesson-03-rwmutex.html">L3 — RWMutex</a></div>
+        <div class="lesson-chip"><a href="module-03-concurrency/lesson-04-race-conditions.html">L4 — Race Conditions</a></div>
+        <div class="lesson-chip"><a href="module-03-concurrency/exercises/exercise-01-pool-design.html">Ex1 — Pool Design</a></div>
+        <div class="lesson-chip"><a href="module-03-concurrency/exercises/exercise-02-rwmutex-drill.html">Ex2 — RWMutex Drill</a></div>
+      </div>
+    </div>
+
+    <div class="module-card locked" id="m04">
+      <div class="module-header">
+        <div><div class="module-number">Module 04</div><div class="module-title">Building go-go</div></div>
+        <span class="module-badge badge-locked">Locked</span>
+      </div>
+      <div class="module-desc">Implement every layer: listener, parser, router, cache, response writer. Then wire them together into a working HTTP server.</div>
+      <div class="progress-bar"><div class="progress-fill fill-accent" id="p04" style="width:0%"></div></div>
+      <div class="module-lessons">
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-01-listener.html">L1 — listener.go</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-02-parser.html">L2 — parser.go</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-03-router.html">L3 — router.go</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-04-cache.html">L4 — cache/store.go</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-05-response.html">L5 — response.go</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/lesson-06-edge-cases.html">L6 — Edge Cases</a></div>
+        <div class="lesson-chip"><a href="module-04-building-go-go/exercises/exercise-06-wire-together.html">Ex6 — Wire It Up</a></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-heading">Timeline & Cost</div>
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Timeline</h3>
+      <div class="info-row"><span class="info-row-label">Daily</span><span class="info-row-value">~2 hours</span></div>
+      <div class="info-row"><span class="info-row-label">Per module</span><span class="info-row-value">~1 week</span></div>
+      <div class="info-row"><span class="info-row-label">Total</span><span class="info-row-value">~4 weeks</span></div>
+      <div class="info-row"><span class="info-row-label">Started</span><span class="info-row-value" id="startDate">—</span></div>
+    </div>
+    <div class="info-card">
+      <h3>Cost</h3>
+      <div class="info-row"><span class="info-row-label">Curriculum</span><span class="info-row-value" style="color:var(--green)">Free</span></div>
+      <div class="info-row"><span class="info-row-label">Hosting</span><span class="info-row-value" style="color:var(--green)">Local (file://)</span></div>
+      <div class="info-row"><span class="info-row-label">Go</span><span class="info-row-value" style="color:var(--green)">Free (stdlib only)</span></div>
+    </div>
+  </div>
+
+  <a href="module-01-network-foundation/lesson-01-tcp-connections.html" class="cta">Start Module 1, Lesson 1 →</a>
+</main>
+<script>
+(function() {
+  var KEY_START = 'gogo_start_date';
+  var KEY_SESSIONS = 'gogo_sessions';
+  var start = localStorage.getItem(KEY_START);
+  if (!start) { start = '2026-05-06'; localStorage.setItem(KEY_START, start); }
+  document.getElementById('startDate').textContent = start;
+  document.getElementById('sessions').textContent = localStorage.getItem(KEY_SESSIONS) || '0';
+  var targetMs = new Date(start).getTime() + 28 * 86400000;
+  document.getElementById('daysLeft').textContent = Math.max(0, Math.ceil((targetMs - Date.now()) / 86400000));
+
+  var LESSONS = [
+    'gogo_m01_l01','gogo_m01_l02','gogo_m01_l03','gogo_m01_e01','gogo_m01_e02',
+    'gogo_m02_l01','gogo_m02_l02','gogo_m02_l03','gogo_m02_l04','gogo_m02_e01','gogo_m02_e02','gogo_m02_e03',
+    'gogo_m03_l01','gogo_m03_l02','gogo_m03_l03','gogo_m03_l04','gogo_m03_e01','gogo_m03_e02',
+    'gogo_m04_l01','gogo_m04_l02','gogo_m04_l03','gogo_m04_l04','gogo_m04_l05','gogo_m04_l06','gogo_m04_e01','gogo_m04_e02','gogo_m04_e03','gogo_m04_e04','gogo_m04_e05','gogo_m04_e06'
+  ];
+  var M = [
+    ['gogo_m01_l01','gogo_m01_l02','gogo_m01_l03','gogo_m01_e01','gogo_m01_e02'],
+    ['gogo_m02_l01','gogo_m02_l02','gogo_m02_l03','gogo_m02_l04','gogo_m02_e01','gogo_m02_e02','gogo_m02_e03'],
+    ['gogo_m03_l01','gogo_m03_l02','gogo_m03_l03','gogo_m03_l04','gogo_m03_e01','gogo_m03_e02'],
+    ['gogo_m04_l01','gogo_m04_l02','gogo_m04_l03','gogo_m04_l04','gogo_m04_l05','gogo_m04_l06','gogo_m04_e01','gogo_m04_e02','gogo_m04_e03','gogo_m04_e04','gogo_m04_e05','gogo_m04_e06']
+  ];
+  var done = LESSONS.filter(function(k){ return localStorage.getItem(k); }).length;
+  document.getElementById('pct').textContent = Math.round(done / LESSONS.length * 100) + '%';
+  var modsDone = M.filter(function(m){ return m.every(function(k){ return localStorage.getItem(k); }); }).length;
+  document.getElementById('modsDone').textContent = modsDone + ' / 4';
+  M.forEach(function(m, i) {
+    var pct = Math.round(m.filter(function(k){ return localStorage.getItem(k); }).length / m.length * 100);
+    var bar = document.getElementById('p0' + (i+1));
+    if (bar) { bar.style.width = pct + '%'; bar.className = 'progress-fill ' + (pct === 100 ? 'fill-green' : 'fill-accent'); }
+  });
+})();
+</script>
+</body>
+</html>

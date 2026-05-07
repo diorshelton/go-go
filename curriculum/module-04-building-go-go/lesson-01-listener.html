@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M4 L1 — listener.go</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 4 — Building go-go</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 1 — listener.go</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 04 · Lesson 01 of 06</div>
+  <h1>listener.go — Accepting Connections</h1>
+  <p class="subtitle">Module 4 is where the theory becomes implementation. Each lesson walks through one component of go-go — its responsibilities, its design decisions, and the traps to avoid. You'll implement each one in the corresponding exercise.</p>
+
+  <h2>What listener.go is responsible for</h2>
+  <p>Exactly three things:</p>
+  <ol>
+    <li>Open the TCP listener on the configured port</li>
+    <li>Accept connections in a tight loop and hand them to the pool</li>
+    <li>Handle shutdown: stop accepting, drain workers, exit cleanly</li>
+  </ol>
+  <p>Nothing else. No parsing, no routing, no responding. The listener's job ends the moment a connection is sent to the pool.</p>
+
+  <h2>The complete implementation</h2>
+
+  <div class="code">
+<span class="kw">package</span> server
+
+<span class="kw">import</span> (
+    <span class="str">"net"</span>
+    <span class="str">"os"</span>
+    <span class="str">"os/signal"</span>
+    <span class="str">"syscall"</span>
+)
+
+<span class="kw">func</span> <span class="fn">Run</span>(port <span class="typ">string</span>, workers <span class="typ">int</span>, store *cache.<span class="typ">Store</span>) {
+    ln, err := net.<span class="fn">Listen</span>(<span class="str">"tcp"</span>, <span class="str">":"</span>+port)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        log.<span class="fn">Fatalf</span>(<span class="str">"listen: %v"</span>, err)
+    }
+
+    router := <span class="fn">NewRouter</span>(store)
+    pool := pool.<span class="fn">New</span>(workers, router)
+
+    <span class="cmt">// Catch interrupt/terminate signals to shut down gracefully</span>
+    quit := <span class="fn">make</span>(<span class="kw">chan</span> os.<span class="typ">Signal</span>, <span class="num">1</span>)
+    signal.<span class="fn">Notify</span>(quit, syscall.SIGINT, syscall.SIGTERM)
+    <span class="kw">go func</span>() {
+        &lt;-quit
+        ln.<span class="fn">Close</span>()  <span class="cmt">// unblocks Accept()</span>
+    }()
+
+    <span class="cmt">// Accept loop — this is the only thing happening here</span>
+    <span class="kw">for</span> {
+        conn, err := ln.<span class="fn">Accept</span>()
+        <span class="kw">if</span> err != <span class="kw">nil</span> {
+            <span class="kw">break</span>  <span class="cmt">// listener closed — shut down</span>
+        }
+        pool.<span class="fn">Submit</span>(conn)
+    }
+
+    pool.<span class="fn">Shutdown</span>()  <span class="cmt">// close channel, wait for workers</span>
+}
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">Why a goroutine for the signal handler?</div>
+    Signal handling blocks on <code>&lt;-quit</code>. If you handle it in the main goroutine, you can't also run the accept loop there. So the signal handler runs in its own goroutine, waiting for the signal. When it arrives, <code>ln.Close()</code> is called, which causes <code>Accept()</code> in the main goroutine's loop to return an error. The two goroutines communicate through the listener's state, not through a shared variable.
+  </div>
+
+  <h2>What the pool.Submit call looks like under load</h2>
+  <p>When all workers are busy and the channel buffer is full, <code>pool.Submit(conn)</code> blocks. During this time, <code>Accept()</code> is not being called. The OS backlog queue starts filling up. When the backlog is full, new incoming SYN packets are dropped by the OS — clients see a connection timeout.</p>
+  <p>This is intentional. It's the server communicating to the network that it's at capacity. The alternative — accepting all connections regardless — would mean allocating unbounded goroutines and memory, which fails less gracefully.</p>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">After the signal handler calls <code>ln.Close()</code>, the accept loop exits. But the pool still has connections being handled. What prevents the process from exiting before those connections finish?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>pool.Shutdown() and the WaitGroup.</strong> After the accept loop breaks, <code>pool.Shutdown()</code> closes the connection channel (signaling workers) and then calls <code>wg.Wait()</code>, which blocks until all workers have finished their current connections and called <code>wg.Done()</code>. Only then does <code>Shutdown()</code> return and <code>Run()</code> exit.</div>
+  </div>
+
+  <div class="footer">
+    <a href="../../module-03-concurrency/exercises/exercise-02-rwmutex-drill.html" class="nbtn">← Module 3</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-02-parser.html" class="nbtn p">Lesson 2 — parser.go →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m04_l01';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M4 L3 — router.go</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .route-table{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:20px 0}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono)}
+  th{background:var(--bg);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04)}tr:last-child td{border-bottom:none}
+  .method{color:var(--orange);font-weight:700}.path-cell{color:var(--accent)}.handler-cell{color:var(--green)}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 4</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 3 — router.go</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 04 · Lesson 03 of 06</div>
+  <h1>router.go — Matching Method & Path</h1>
+  <p class="subtitle">The router takes a parsed request and dispatches it to the correct handler. go-go has four routes. The router's job is to match them reliably and return 404/405 for everything else.</p>
+
+  <h2>The routes</h2>
+
+  <div class="route-table">
+    <table>
+      <tr><th>Method</th><th>Path pattern</th><th>Handler</th></tr>
+      <tr><td class="method">GET</td><td class="path-cell">/keys</td><td class="handler-cell">handleGetAll</td></tr>
+      <tr><td class="method">GET</td><td class="path-cell">/keys/:id</td><td class="handler-cell">handleGet</td></tr>
+      <tr><td class="method">PUT</td><td class="path-cell">/keys/:id</td><td class="handler-cell">handlePut</td></tr>
+      <tr><td class="method">DELETE</td><td class="path-cell">/keys/:id</td><td class="handler-cell">handleDelete</td></tr>
+    </table>
+  </div>
+
+  <h2>Path matching — keeping it simple</h2>
+  <p>With only four routes, you don't need a trie or regex. A simple sequence of <code>strings.HasPrefix</code> checks is enough and is easy to reason about:</p>
+
+  <div class="code">
+<span class="kw">func</span> (r *<span class="typ">Router</span>) <span class="fn">Handle</span>(req *<span class="typ">Request</span>) *<span class="typ">Response</span> {
+    path := req.Path
+
+    <span class="kw">switch</span> {
+    <span class="kw">case</span> req.Method == <span class="str">"GET"</span> && path == <span class="str">"/keys"</span>:
+        <span class="kw">return</span> r.<span class="fn">handleGetAll</span>(req)
+
+    <span class="kw">case</span> req.Method == <span class="str">"GET"</span> && strings.<span class="fn">HasPrefix</span>(path, <span class="str">"/keys/"</span>):
+        id := strings.<span class="fn">TrimPrefix</span>(path, <span class="str">"/keys/"</span>)
+        <span class="kw">if</span> id == <span class="str">""</span> { <span class="kw">return</span> <span class="fn">NotFound</span>() }
+        <span class="kw">return</span> r.<span class="fn">handleGet</span>(req, id)
+
+    <span class="kw">case</span> req.Method == <span class="str">"PUT"</span> && strings.<span class="fn">HasPrefix</span>(path, <span class="str">"/keys/"</span>):
+        id := strings.<span class="fn">TrimPrefix</span>(path, <span class="str">"/keys/"</span>)
+        <span class="kw">if</span> id == <span class="str">""</span> { <span class="kw">return</span> <span class="fn">NotFound</span>() }
+        <span class="kw">return</span> r.<span class="fn">handlePut</span>(req, id)
+
+    <span class="kw">case</span> req.Method == <span class="str">"DELETE"</span> && strings.<span class="fn">HasPrefix</span>(path, <span class="str">"/keys/"</span>):
+        id := strings.<span class="fn">TrimPrefix</span>(path, <span class="str">"/keys/"</span>)
+        <span class="kw">if</span> id == <span class="str">""</span> { <span class="kw">return</span> <span class="fn">NotFound</span>() }
+        <span class="kw">return</span> r.<span class="fn">handleDelete</span>(req, id)
+
+    <span class="kw">default</span>:
+        <span class="kw">return</span> <span class="fn">NotFound</span>()
+    }
+}
+  </div>
+
+  <h2>The Response type</h2>
+
+  <div class="code">
+<span class="kw">type</span> <span class="typ">Response</span> <span class="kw">struct</span> {
+    Status  <span class="typ">int</span>
+    Body    []<span class="typ">byte</span>
+}
+  </div>
+
+  <p>Handlers return a <code>*Response</code>. The response writer in <code>response.go</code> takes that and formats valid HTTP/1.1 headers and body bytes onto the connection.</p>
+
+  <h2>The handlers themselves</h2>
+
+  <div class="code">
+<span class="kw">func</span> (r *<span class="typ">Router</span>) <span class="fn">handleGet</span>(req *<span class="typ">Request</span>, id <span class="typ">string</span>) *<span class="typ">Response</span> {
+    val, ok := r.store.<span class="fn">Get</span>(id)
+    <span class="kw">if</span> !ok {
+        <span class="kw">return</span> &<span class="typ">Response</span>{Status: <span class="num">404</span>, Body: []<span class="typ">byte</span>(<span class="str">`{"error":"not found"}`</span>)}
+    }
+    <span class="kw">return</span> &<span class="typ">Response</span>{Status: <span class="num">200</span>, Body: val}
+}
+
+<span class="kw">func</span> (r *<span class="typ">Router</span>) <span class="fn">handlePut</span>(req *<span class="typ">Request</span>, id <span class="typ">string</span>) *<span class="typ">Response</span> {
+    <span class="kw">if</span> !json.<span class="fn">Valid</span>(req.Body) {
+        <span class="kw">return</span> &<span class="typ">Response</span>{Status: <span class="num">400</span>, Body: []<span class="typ">byte</span>(<span class="str">`{"error":"invalid json"}`</span>)}
+    }
+    r.store.<span class="fn">Set</span>(id, json.<span class="typ">RawMessage</span>(req.Body))
+    <span class="kw">return</span> &<span class="typ">Response</span>{Status: <span class="num">200</span>, Body: []<span class="typ">byte</span>(<span class="str">`{"ok":true}`</span>)}
+}
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">json.Valid before storing</div>
+    <code>json.Valid(req.Body)</code> verifies that the bytes are valid JSON before storing. Without this, a client can store arbitrary bytes and corrupt your cache's JSON invariants. It's a single line that prevents a class of bugs.
+  </div>
+
+  <div class="footer">
+    <a href="lesson-02-parser.html" class="nbtn">← Lesson 2</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-04-cache.html" class="nbtn p">Lesson 4 — cache/store.go →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m04_l03';
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

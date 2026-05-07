@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M1 Ex2 — Build a TCP Echo Server</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--red:#f85149;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:26px;font-weight:700;margin-bottom:8px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:36px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:8px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7;position:relative}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin:16px 0}
+  .step-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .step-num{width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+  .step-title{font-weight:600;font-size:15px}
+  .step-body{font-size:14px;color:var(--muted);line-height:1.7}
+  .step-body strong{color:var(--text)}
+  .shell{background:#000;border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin:12px 0;font-family:var(--mono);font-size:13px;color:#e6edf3}
+  .shell .prompt{color:var(--green)}
+  .shell .out{color:var(--muted)}
+  .challenge{background:var(--surface);border:1px solid var(--yellow);border-radius:var(--radius);padding:20px 24px;margin:24px 0}
+  .challenge-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:10px}
+  .challenge-text{font-size:15px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .challenge-hint{font-size:13px;color:var(--muted)}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:24px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 1</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Exercise 2 — TCP Echo Server</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 01 · Exercise 02</div>
+  <h1>Build a TCP Echo Server</h1>
+  <p class="subtitle">Before you write an HTTP server, write something simpler: a server that accepts a TCP connection, reads whatever the client sends, and writes it straight back. This forces you to use the exact primitives — <code>net.Listen</code>, <code>Accept</code>, <code>Read</code>, <code>Write</code> — before any HTTP complexity is layered on top.</p>
+
+  <div class="callout">
+    <div class="callout-label">Goal</div>
+    A TCP server on port 9000. Any client that connects can type text and see it echoed back, line by line. When the client disconnects, the server handles it cleanly and waits for the next client.
+  </div>
+
+  <h2>Setup</h2>
+  <p>Create a new directory outside the go-go project for this exercise:</p>
+  <div class="shell">
+    <div><span class="prompt">$</span> mkdir echo-server && cd echo-server</div>
+    <div><span class="prompt">$</span> go mod init echo</div>
+    <div><span class="prompt">$</span> touch main.go</div>
+  </div>
+  <p>You'll write everything in <code>main.go</code>. No external packages — just <code>net</code>, <code>bufio</code>, <code>fmt</code>, and <code>log</code> from stdlib.</p>
+
+  <h2>Build it in steps</h2>
+
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Start the listener</div>
+    </div>
+    <div class="step-body">
+      In <code>main()</code>, call <code>net.Listen("tcp", ":9000")</code>. Handle the error. Defer <code>ln.Close()</code>. Print a message so you know it's running.
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Accept in a loop</div>
+    </div>
+    <div class="step-body">
+      Add a <code>for</code> loop that calls <code>ln.Accept()</code>. On error, break. On success, call a <code>handleConn(conn net.Conn)</code> function. <strong>For now, call it directly (not in a goroutine)</strong> — you'll see why concurrency matters in the next step.
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Implement handleConn</div>
+    </div>
+    <div class="step-body">
+      In <code>handleConn</code>: defer <code>conn.Close()</code>. Use a <code>bufio.Scanner</code> to read line by line. For each line, write it back using <code>conn.Write()</code>. When the scanner returns false (client disconnected), return.
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">Test it</div>
+    </div>
+    <div class="step-body">
+      In one terminal: <code>go run main.go</code>. In another: <code>nc localhost 9000</code> (netcat). Type anything — you should see it echoed back.
+    </div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Observe this</div>
+    <div class="qt">Open two terminals and try connecting two netcat sessions simultaneously to your server. What happens to the second one?</div>
+    <div class="rbtn" onclick="toggle(this)" style="cursor:pointer;display:inline-block;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius)">Show answer</div>
+    <div class="ans"><strong>The second client blocks until the first disconnects.</strong> Because <code>handleConn</code> is called directly (not in a goroutine), the accept loop is stuck waiting for the first connection to finish. The second client's TCP handshake completes (it's in the OS backlog), but your code never calls <code>Accept()</code> to hand it off. Now you understand concurrency at the network level — not just in theory.</div>
+  </div>
+
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">Fix it with a goroutine</div>
+    </div>
+    <div class="step-body">
+      Change the direct call to <code>go handleConn(conn)</code>. Re-test with two simultaneous netcat connections. Both should echo independently. This is the simplest version of concurrent connection handling — and exactly the starting point that go-go improves on with a bounded worker pool.
+    </div>
+  </div>
+
+  <h2>Challenge extensions</h2>
+
+  <div class="challenge">
+    <div class="challenge-label">Challenge 1</div>
+    <div class="challenge-text">Add a connection counter. Print how many active connections exist when each new client connects and disconnects.</div>
+    <div class="challenge-hint">Hint: you'll need <code>sync/atomic</code> or a mutex to safely increment/decrement from multiple goroutines.</div>
+  </div>
+
+  <div class="challenge">
+    <div class="challenge-label">Challenge 2</div>
+    <div class="challenge-text">Add a read deadline. If the client sends no data for 30 seconds, close the connection. Use <code>conn.SetReadDeadline(time.Now().Add(30 * time.Second))</code> before each read.</div>
+    <div class="challenge-hint">Hint: a deadline error from Read() is not a panic situation — detect it and close cleanly.</div>
+  </div>
+
+  <div class="challenge">
+    <div class="challenge-label">Challenge 3 — Worker pool</div>
+    <div class="challenge-text">Replace the unbounded <code>go handleConn(conn)</code> with a fixed pool of 3 worker goroutines using a channel. Observe what happens when 4 clients connect simultaneously.</div>
+    <div class="challenge-hint">This is exactly the pattern in go-go's pool.go — implement it here first in a simpler context.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Reflect before moving on</div>
+    <div class="qt">What would you need to change about this echo server to make it speak HTTP instead of raw text?</div>
+    <div class="rbtn" onclick="toggle(this)" style="cursor:pointer;display:inline-block;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius)">Show answer</div>
+    <div class="ans">
+      <strong>You'd need to parse HTTP.</strong> Right now <code>handleConn</code> reads whatever bytes arrive and echoes them. To speak HTTP, you'd need to:<br><br>
+      1. Read bytes until you find a valid HTTP request (request line + headers + blank line)<br>
+      2. Parse those bytes into a structured request (method, path, headers, body)<br>
+      3. Route the request to a handler<br>
+      4. Write a valid HTTP response (status line + headers + body)<br>
+      5. Loop back to step 1 if the connection is keep-alive<br><br>
+      That's exactly what Modules 2, 3, and 4 build — in that order.
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="exercise-01-tcp-quiz.html" class="nbtn">← Exercise 1</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="../../module-02-http-raw-bytes/lesson-01-request-line.html" class="nbtn p">Module 2, Lesson 1 →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m01_e02';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

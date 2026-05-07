@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M2 L2 — Headers Over the Wire</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--red:#f85149;--purple:#d2a8ff;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .wire{background:#000;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;font-family:var(--mono);font-size:13px;line-height:2}
+  .wire .rl{color:var(--muted)}.wire .hk{color:var(--purple)}.wire .hv{color:var(--text)}.wire .sep{color:var(--muted)}.wire .crlf{color:#444;font-size:11px}.wire .blank{color:var(--yellow)}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .warn{border-left:3px solid var(--yellow);background:rgba(210,153,34,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .warn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:6px}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 2</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 2 — Headers Over the Wire</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 02 · Lesson 02 of 04</div>
+  <h1>Headers Over the Wire</h1>
+  <p class="subtitle">After the request line come the headers — a series of key:value pairs that describe metadata about the request. Your parser reads them line by line until it hits a blank line. That blank line is load-bearing.</p>
+
+  <h2>The full structure on the wire</h2>
+
+  <div class="wire">
+<span class="rl">PUT /keys/foo HTTP/1.1</span><span class="crlf"> \r\n</span>
+<span class="hk">Host</span><span class="sep">: </span><span class="hv">localhost:8080</span><span class="crlf"> \r\n</span>
+<span class="hk">Content-Type</span><span class="sep">: </span><span class="hv">application/json</span><span class="crlf"> \r\n</span>
+<span class="hk">Content-Length</span><span class="sep">: </span><span class="hv">15</span><span class="crlf"> \r\n</span>
+<span class="hk">Connection</span><span class="sep">: </span><span class="hv">keep-alive</span><span class="crlf"> \r\n</span>
+<span class="blank">&nbsp;</span><span class="crlf"> \r\n  ← blank line: headers done, body follows</span>
+<span class="hv">{"value":"bar"}</span>
+  </div>
+
+  <p>The structure is rigid: <code>Name: value\r\n</code>. The separator is a colon followed by optional whitespace. The terminator is always CRLF. When you read a line that is <em>just</em> CRLF (or an empty string after stripping), headers are done.</p>
+
+  <h2>Parsing headers in Go</h2>
+
+  <div class="code">
+headers := <span class="fn">make</span>(<span class="kw">map</span>[<span class="typ">string</span>]<span class="typ">string</span>)
+
+<span class="kw">for</span> {
+    line, err := reader.<span class="fn">ReadString</span>(<span class="str">'\n'</span>)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, err
+    }
+    line = strings.<span class="fn">TrimRight</span>(line, <span class="str">"\r\n"</span>)
+    <span class="kw">if</span> line == <span class="str">""</span> {
+        <span class="kw">break</span>  <span class="cmt">// blank line = end of headers</span>
+    }
+    idx := strings.<span class="fn">IndexByte</span>(line, <span class="str">':'</span>)
+    <span class="kw">if</span> idx &lt; <span class="num">1</span> {
+        <span class="kw">return</span> <span class="kw">nil</span>, errors.<span class="fn">New</span>(<span class="str">"malformed header"</span>)
+    }
+    key := strings.<span class="fn">ToLower</span>(strings.<span class="fn">TrimSpace</span>(line[:<span class="num">idx</span>]))
+    val := strings.<span class="fn">TrimSpace</span>(line[idx+<span class="num">1</span>:])
+    headers[key] = val
+}
+  </div>
+
+  <p>Two things to call out:</p>
+  <ul>
+    <li><strong><code>strings.ToLower</code> on the key</strong> — HTTP header names are case-insensitive by spec. Normalizing to lowercase lets you look them up consistently: <code>headers["content-length"]</code> works whether the client sent <code>Content-Length</code>, <code>content-length</code>, or <code>CONTENT-LENGTH</code>.</li>
+    <li><strong><code>idx &lt; 1</code> check</strong> — rejects lines with no colon (<code>idx == -1</code>) or a colon as the very first character (<code>idx == 0</code>, which would make the key empty).</li>
+  </ul>
+
+  <h2>The headers that matter for go-go</h2>
+  <p>Of all the headers a client might send, only two are relevant to your server's behavior:</p>
+
+  <div class="code">
+<span class="cmt">// How many bytes is the body?</span>
+contentLength, _ := strconv.<span class="fn">Atoi</span>(headers[<span class="str">"content-length"</span>])
+
+<span class="cmt">// Should we keep the connection open after responding?</span>
+keepAlive := strings.<span class="fn">ToLower</span>(headers[<span class="str">"connection"</span>]) != <span class="str">"close"</span>
+  </div>
+
+  <p><code>Content-Length</code> tells your parser how many body bytes to read. Without it, you don't read a body. <code>Connection</code> tells your worker loop whether to wait for the next request on this connection or close it after responding.</p>
+
+  <div class="callout">
+    <div class="callout-label">HTTP/1.1 default: keep-alive</div>
+    In HTTP/1.1, connections are persistent by default. A client that sends no <code>Connection</code> header expects the connection to stay open. Only when it sends <code>Connection: close</code> does it signal that it won't send more requests. Your worker loop must handle both cases.
+  </div>
+
+  <h2>The blank line is a boundary, not punctuation</h2>
+  <p>It's easy to think of the blank line as just formatting — a visual separator. It isn't. It's the only thing that tells your parser where headers end and body begins. If a client sends a header with a missing CRLF, or skips the blank line, your parser reads the body as a header (or keeps reading expecting more headers indefinitely). This is an attack vector — HTTP request smuggling exploits ambiguity in exactly this boundary.</p>
+  <p>For go-go, the defense is simple: if you don't find a blank line within a reasonable read (bounded by a max header count or read timeout), return 400.</p>
+
+  <div class="warn">
+    <div class="warn-label">Set a read deadline before parsing</div>
+    A client that connects and sends nothing will leave your parser blocking on <code>ReadString('\n')</code> forever — holding a worker goroutine doing nothing. Set <code>conn.SetReadDeadline(time.Now().Add(30 * time.Second))</code> before each read cycle. If the deadline fires, <code>ReadString</code> returns a timeout error, and you close the connection. No goroutine leaks.
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">Why normalize header keys to lowercase rather than preserving their original case?</div>
+    <div class="qh">Different HTTP clients send <code>Content-Type</code>, <code>content-type</code>, <code>CONTENT-TYPE</code>. How do you look up a header reliably if you preserve case?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Case-insensitive lookup requires normalization.</strong> If you store headers as-received, a lookup for <code>content-length</code> will miss a header stored as <code>Content-Length</code>. You'd need to do a case-insensitive comparison every time. Normalizing at parse time (ToLower once) makes all subsequent lookups simple map gets. The spec explicitly says header field names are case-insensitive, so normalization is correct behavior.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">A client sends 500 headers in a single request. What should your parser do?</div>
+    <div class="qh">There's no hard limit in the HTTP spec. But should you parse all 500?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Return 431 (Request Header Fields Too Large) after a reasonable limit.</strong> An unbounded header loop is a denial-of-service vector — a client can flood your parser with headers, tying up a worker goroutine and memory. Real servers cap headers (nginx defaults to 80, Apache to ~100). For go-go, a cap of 50–100 is reasonable. Count headers in your loop and return 431 if the count exceeds your limit.</div>
+  </div>
+
+  <h2>What's next</h2>
+  <p>You know how to parse the request line and headers. Now: the body. How many bytes to read, what happens when Content-Length is missing, and what <code>json.RawMessage</code> has to do with any of it.</p>
+
+  <div class="footer">
+    <a href="lesson-01-request-line.html" class="nbtn">← Lesson 1</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-03-body-content-length.html" class="nbtn p">Lesson 3 — Body & Content-Length →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m02_l02';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

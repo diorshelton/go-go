@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M2 Ex1 — HTTP Request Dissector</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--red:#f85149;--orange:#ffa657;--purple:#d2a8ff;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.6}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .container{max-width:960px;margin:0 auto;padding:36px 24px 60px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+  h1{font-size:24px;font-weight:700;margin-bottom:8px}
+  .desc{color:var(--muted);font-size:14px;max-width:600px;line-height:1.6;margin-bottom:28px}
+  .preset-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .preset-label{font-size:12px;color:var(--muted);margin-right:4px}
+  .preset-btn{font-family:var(--mono);font-size:12px;padding:5px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+  .preset-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .pane-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px}
+  .raw-input{width:100%;height:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.7;padding:16px;resize:vertical;outline:none;transition:border-color .15s}
+  .raw-input:focus{border-color:var(--accent)}
+  .parse-btn{margin-top:10px;width:100%;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;padding:10px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .parse-btn:hover{background:var(--accent-dim)}
+  .output-pane{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);min-height:300px;overflow:hidden}
+  .output-empty{display:flex;align-items:center;justify-content:center;height:300px;color:var(--border);font-family:var(--mono);font-size:13px}
+  .parsed-section{border-bottom:1px solid var(--border)}.parsed-section:last-child{border-bottom:none}
+  .section-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;transition:background .1s}
+  .section-header:hover{background:rgba(255,255,255,.03)}
+  .section-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .section-name{font-family:var(--mono);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;flex:1}
+  .section-count{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .section-body{padding:0 16px 16px;display:none}.section-body.open{display:block}
+  .s-rl .section-dot{background:var(--accent)}.s-rl .section-name{color:var(--accent)}
+  .s-hd .section-dot{background:var(--purple)}.s-hd .section-name{color:var(--purple)}
+  .s-bl .section-dot{background:var(--yellow)}.s-bl .section-name{color:var(--yellow)}
+  .s-bd .section-dot{background:var(--green)}.s-bd .section-name{color:var(--green)}
+  .field-row{display:grid;grid-template-columns:130px 1fr;gap:12px;align-items:baseline;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+  .field-row:last-child{border-bottom:none}
+  .fk{color:var(--muted);font-family:var(--mono);font-size:12px}.fv{font-family:var(--mono);word-break:break-all}
+  .v-method{color:var(--orange);font-weight:700}.v-path{color:var(--accent)}.v-version{color:var(--green)}
+  .v-hk{color:var(--purple)}.v-hv{color:var(--text)}.v-body{color:var(--green);white-space:pre-wrap}
+  .explain{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6}
+  .err-msg{color:var(--red);font-size:14px;padding:16px;font-family:var(--mono)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:36px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 2</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Exercise 1 — HTTP Request Dissector</span>
+</nav>
+<main class="container">
+  <div class="eyebrow">Module 02 · Exercise 01</div>
+  <h1>HTTP Request Dissector</h1>
+  <p class="desc">Paste a raw HTTP/1.1 request and see each section broken down. This is exactly what your parser reads off the wire. Try all the presets, then paste your own.</p>
+
+  <div class="preset-row">
+    <span class="preset-label">Presets:</span>
+    <button class="preset-btn" onclick="loadPreset('get')">GET /keys/foo</button>
+    <button class="preset-btn" onclick="loadPreset('put')">PUT with body</button>
+    <button class="preset-btn" onclick="loadPreset('delete')">DELETE</button>
+    <button class="preset-btn" onclick="loadPreset('keepalive')">keep-alive headers</button>
+    <button class="preset-btn" onclick="loadPreset('malformed')">malformed</button>
+  </div>
+
+  <div class="tool-grid">
+    <div>
+      <div class="pane-label">Raw Request</div>
+      <textarea class="raw-input" id="rawInput" placeholder="Paste a raw HTTP/1.1 request..."></textarea>
+      <button class="parse-btn" onclick="parseRequest()">Dissect →</button>
+    </div>
+    <div>
+      <div class="pane-label">Dissection</div>
+      <div class="output-pane" id="outputPane"><div class="output-empty">← paste a request and click Dissect</div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="../lesson-04-keep-alive.html" class="nbtn">← Lesson 4</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="exercise-02-spot-malformed.html" class="nbtn p">Exercise 2 — Spot Malformed →</a>
+  </div>
+</main>
+<script>
+var PRESETS={
+  get:"GET /keys/foo HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/8.4.0\r\nAccept: */*\r\n\r\n",
+  put:"PUT /keys/foo HTTP/1.1\r\nHost: localhost:8080\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"value\":\"bar\"}",
+  delete:"DELETE /keys/foo HTTP/1.1\r\nHost: localhost:8080\r\nUser-Agent: curl/8.4.0\r\n\r\n",
+  keepalive:"GET /keys HTTP/1.1\r\nHost: localhost:8080\r\nConnection: keep-alive\r\nKeep-Alive: timeout=30, max=100\r\n\r\n",
+  malformed:"BADMETHOD /keys/foo HTTP/2.0\r\nHost localhost:8080\r\n\r\n"
+};
+function loadPreset(n){document.getElementById('rawInput').value=PRESETS[n].replace(/\r\n/g,'\n');parseRequest();}
+function parseRequest(){
+  var raw=document.getElementById('rawInput').value,out=document.getElementById('outputPane');
+  var norm=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n'),lines=norm.split('\n');
+  if(!raw.trim()){out.innerHTML='<div class="output-empty">← paste a request and click Dissect</div>';return;}
+  var html='';
+  var rl=lines[0]||'',parts=rl.trim().split(/\s+/);
+  var method=parts[0]||'',path=parts[1]||'',version=parts[2]||'';
+  var VALID=['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS'],VER=['HTTP/1.0','HTTP/1.1'];
+  var ok=parts.length===3&&VALID.indexOf(method)!==-1&&path.startsWith('/')&&VER.indexOf(version)!==-1;
+  html+='<div class="parsed-section s-rl"><div class="section-header" onclick="tog(this)"><div class="section-dot"></div><div class="section-name">Request Line</div><div class="section-count">'+(ok?'✓':'⚠ malformed')+'</div></div><div class="section-body open">';
+  if(ok){html+=f('Method','<span class="v-method">'+esc(method)+'</span>')+f('Path','<span class="v-path">'+esc(path)+'</span>')+f('Version','<span class="v-version">'+esc(version)+'</span>')+'<div class="explain">First line of every HTTP request. Three parts separated by single spaces, terminated by CRLF. Your parser reads this first.</div>';}
+  else{html+='<div class="err-msg">⚠ Malformed: "'+esc(rl)+'"<br>Expected: METHOD /path HTTP/1.1</div>';}
+  html+='</div></div>';
+  var i=1,headers=[];
+  while(i<lines.length&&lines[i]!==''){var ci=lines[i].indexOf(':');if(ci>0)headers.push({k:lines[i].slice(0,ci).trim(),v:lines[i].slice(ci+1).trim()});i++;}
+  html+='<div class="parsed-section s-hd"><div class="section-header" onclick="tog(this)"><div class="section-dot"></div><div class="section-name">Headers</div><div class="section-count">'+headers.length+' field'+(headers.length!==1?'s':'')+'</div></div><div class="section-body open">';
+  if(!headers.length)html+='<div style="color:var(--muted);font-size:13px;padding:4px 0">No headers.</div>';
+  else{headers.forEach(function(h){html+=f('<span class="v-hk">'+esc(h.k)+'</span>','<span class="v-hv">'+esc(h.v)+'</span>');});
+  var cl=headers.find(function(h){return h.k.toLowerCase()==='content-length';});
+  var cn=headers.find(function(h){return h.k.toLowerCase()==='connection';});
+  html+='<div class="explain">Key: value pairs, one per line, each ending CRLF. Your parser reads until the blank line.';
+  if(cl)html+='<br><br><strong>Content-Length: '+esc(cl.v)+'</strong> — read exactly this many body bytes.';
+  if(cn)html+='<br><br><strong>Connection: '+esc(cn.v)+'</strong> — '+(cn.v.toLowerCase()==='keep-alive'?'keep connection open for the next request.':'close after responding.');
+  html+='</div>';}
+  html+='</div></div>';
+  html+='<div class="parsed-section s-bl"><div class="section-header" onclick="tog(this)"><div class="section-dot"></div><div class="section-name">Blank Line (CRLF)</div><div class="section-count">separator</div></div><div class="section-body"><div class="explain">A bare \\r\\n signals that headers are done. This is the exact boundary your parser watches for. Next bytes (if any) are the body.</div></div></div>';
+  var bodyLines=lines.slice(i+1),body=bodyLines.join('\n');
+  var cl2=headers.find(function(h){return h.k.toLowerCase()==='content-length';});
+  var expLen=cl2?parseInt(cl2.v,10):null;
+  html+='<div class="parsed-section s-bd"><div class="section-header" onclick="tog(this)"><div class="section-dot"></div><div class="section-name">Body</div><div class="section-count">'+(body?body.length+' bytes':'empty')+'</div></div><div class="section-body">';
+  if(!body)html+='<div style="color:var(--muted);font-size:13px;padding:4px 0">No body. Expected for GET and DELETE.</div>';
+  else{html+=f('Content','<span class="v-body">'+esc(body)+'</span>')+f('Actual',body.length+' bytes');if(expLen!==null){var match=body.length===expLen;html+=f('Expected (CL)',expLen+' bytes <span style="color:'+(match?'var(--green)':'var(--red)')+'">'+(match?'✓ match':'⚠ mismatch')+'</span>');} html+='<div class="explain">Everything after the blank line. Read exactly Content-Length bytes — no more.</div>';}
+  html+='</div></div>';
+  out.innerHTML=html;
+}
+function tog(h){var b=h.nextElementSibling;b.classList.toggle('open');}
+function f(k,v){return '<div class="field-row"><div class="fk">'+k+'</div><div class="fv">'+v+'</div></div>';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function markDone(){localStorage.setItem('gogo_m02_e01','1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}
+(function(){if(localStorage.getItem('gogo_m02_e01')){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

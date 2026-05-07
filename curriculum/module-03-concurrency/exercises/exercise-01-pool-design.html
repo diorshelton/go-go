@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M3 Ex1 — Design the Worker Pool</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:26px;font-weight:700;margin-bottom:8px}
+  .subtitle{color:var(--muted);font-size:14px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:36px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:8px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:28px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 3</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Exercise 1 — Design the Worker Pool</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 03 · Exercise 01</div>
+  <h1>Design the Worker Pool</h1>
+  <p class="subtitle">This exercise walks you through the design decisions behind go-go's worker pool using Socratic questions. Each question forces you to reason about a specific trade-off before seeing the answer. Work through them in order — they build on each other.</p>
+
+  <h2>The skeleton</h2>
+  <p>Here's the incomplete pool implementation. The questions walk through what goes in the blanks and why each decision was made:</p>
+
+  <div class="code">
+<span class="kw">type</span> <span class="typ">Pool</span> <span class="kw">struct</span> {
+    connCh <span class="kw">chan</span> net.<span class="typ">Conn</span>
+    wg     sync.<span class="typ">WaitGroup</span>
+    router *<span class="typ">Router</span>
+}
+
+<span class="kw">func</span> <span class="fn">New</span>(workers <span class="typ">int</span>, router *<span class="typ">Router</span>) *<span class="typ">Pool</span> {
+    p := &<span class="typ">Pool</span>{
+        connCh: <span class="fn">make</span>(<span class="kw">chan</span> net.<span class="typ">Conn</span>, ???),   <span class="cmt">// Q1: what size?</span>
+        router: router,
+    }
+    <span class="kw">for</span> i := <span class="num">0</span>; i &lt; workers; i++ {
+        p.wg.<span class="fn">Add</span>(<span class="num">1</span>)
+        <span class="kw">go</span> p.<span class="fn">worker</span>()
+    }
+    <span class="kw">return</span> p
+}
+
+<span class="kw">func</span> (p *<span class="typ">Pool</span>) <span class="fn">Submit</span>(conn net.<span class="typ">Conn</span>) {
+    ???                                         <span class="cmt">// Q2: what goes here?</span>
+}
+
+<span class="kw">func</span> (p *<span class="typ">Pool</span>) <span class="fn">worker</span>() {
+    <span class="kw">defer</span> p.wg.<span class="fn">Done</span>()
+    <span class="kw">for</span> conn := <span class="kw">range</span> p.connCh {
+        <span class="fn">handleConn</span>(conn, p.router)
+    }
+}
+
+<span class="kw">func</span> (p *<span class="typ">Pool</span>) <span class="fn">Shutdown</span>() {
+    ???                                         <span class="cmt">// Q3: what goes here?</span>
+    p.wg.<span class="fn">Wait</span>()
+}
+  </div>
+
+  <div class="q">
+    <div class="ql">Question 1</div>
+    <div class="qt">What should the channel buffer size be — the <code>???</code> in <code>make(chan net.Conn, ???)</code>?</div>
+    <div class="qh">Consider: what is the maximum number of connections that could be "in flight" between Submit() and a worker picking them up?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>workers.</strong> At any moment, the accept loop could have submitted up to <code>workers</code> connections before any worker finishes its current one. Buffering to <code>workers</code> means the accept loop can always submit a new connection for each idle-worker slot, absorbing a natural burst. A larger buffer wastes memory; a smaller one (including 0) causes the accept loop to block earlier than necessary.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Question 2</div>
+    <div class="qt">What goes in <code>Submit()</code>? Just <code>p.connCh &lt;- conn</code>?</div>
+    <div class="qh">What happens to Submit() when the pool is shutting down and the channel is closed? Can a send to a closed channel panic?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>For go-go's simple case: yes, just <code>p.connCh &lt;- conn</code>.</strong> The accept loop exits before Shutdown() is called, so Submit() is never called on a shutting-down pool. But in a more robust implementation, you'd use a select with a done channel to handle the shutdown-races-with-submit case without panicking. For now: <code>p.connCh &lt;- conn</code> is correct given the shutdown ordering we enforce.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Question 3</div>
+    <div class="qt">What goes in <code>Shutdown()</code> before <code>p.wg.Wait()</code>?</div>
+    <div class="qh">Workers loop on <code>range connCh</code>. What signals them to stop?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong><code>close(p.connCh)</code>.</strong> When you close the channel, the <code>range</code> loop in each worker exits after draining any remaining connections. Workers don't stop immediately — they finish whatever connection they're handling, then exit the range loop, then call <code>wg.Done()</code>. <code>wg.Wait()</code> then waits for all of them to finish. The close must happen before Wait() — otherwise the workers never exit their range loop and Wait() blocks forever.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Question 4</div>
+    <div class="qt">Why is <code>wg.Add(1)</code> called in <code>New()</code> rather than inside the goroutine itself?</div>
+    <div class="qh">What could go wrong if wg.Add(1) were the first line inside the <code>go func()</code>?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Race between Add and Wait.</strong> If Add(1) is inside the goroutine, there's a window between when <code>go func()</code> is called and when the goroutine actually starts executing. If <code>Shutdown()</code> is called in that window, <code>wg.Wait()</code> might return before the goroutine has called <code>Add(1)</code>, causing the shutdown to complete with goroutines still running. Adding before the goroutine starts eliminates this race.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Synthesis question</div>
+    <div class="qt">Explain the full shutdown sequence in order. What must happen first, second, and third?</div>
+    <div class="qh">Think about: listener, accept loop, channel, workers, WaitGroup.</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans">
+      <strong>1. Close the listener.</strong> This causes the accept loop's Accept() to return an error.<br><br>
+      <strong>2. Accept loop exits.</strong> It detects the error, breaks out of the for loop, and never calls Submit() again.<br><br>
+      <strong>3. Call pool.Shutdown().</strong> This closes the connection channel, signaling workers to drain and exit their range loops.<br><br>
+      <strong>4. wg.Wait() blocks</strong> until all workers call wg.Done().<br><br>
+      <strong>5. Process exits cleanly.</strong> No goroutines are leaked. No connections are abandoned mid-response.
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="../lesson-04-race-conditions.html" class="nbtn">← Lesson 4</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="exercise-02-rwmutex-drill.html" class="nbtn p">Exercise 2 — RWMutex Drill →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m03_e01';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

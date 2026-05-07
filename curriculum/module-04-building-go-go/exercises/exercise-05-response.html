@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M4 Ex5 — Implement response.go</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}.code .num{color:#79c0ff}
+  .wire{background:#000;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .wire .hl{color:var(--green)}.wire .dim{color:var(--muted)}
+  .check{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--muted)}
+  .check input{margin-top:3px;accent-color:var(--green);flex-shrink:0}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 4</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Exercise 5 — response.go</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 04 · Exercise 05 of 06</div>
+  <h1>Implement response.go</h1>
+  <p class="subtitle">The smallest component. Its correctness is visible to every client that talks to your server.</p>
+
+  <h2>What you're producing on the wire</h2>
+
+  <div class="wire">
+<span class="hl">HTTP/1.1 200 OK\r\n</span>
+<span class="hl">Content-Type: application/json\r\n</span>
+<span class="hl">Content-Length: 15\r\n</span>
+<span class="hl">Connection: keep-alive\r\n</span>
+<span class="hl">\r\n</span>
+<span class="hl">{"key":"value"}</span>
+  </div>
+
+  <h2>What to implement</h2>
+
+  <p>Create <code>server/response.go</code>. You need three things:</p>
+
+  <ol>
+    <li><strong><code>WriteResponse(conn net.Conn, resp *Response, keepAlive bool)</code></strong> — formats the status line, headers, blank line, and body. Writes header as a single formatted string, then body bytes separately.</li>
+    <li><strong><code>WriteError(conn net.Conn, status int)</code></strong> — builds a JSON error body (<code>{"error":"Bad Request"}</code>) and calls WriteResponse with <code>keepAlive: false</code>.</li>
+    <li><strong><code>statusText(code int) string</code></strong> — unexported helper that maps status codes to reason phrases. Cover 200, 400, 404, 405, 413 at minimum.</li>
+  </ol>
+
+  <div class="callout">
+    <div class="callout-label">The variable shadowing trap from the lesson</div>
+    If you write <code>conn := "close"</code> inside a function that takes <code>conn net.Conn</code>, the new <code>conn</code> shadows the parameter. Your subsequent <code>conn.Write(...)</code> calls will fail to compile. Use a distinct name for the Connection header value: <code>connHeader := "close"</code>.
+  </div>
+
+  <h2>Verify with curl</h2>
+  <p>Once the full server is wired (next exercise), test the response format directly:</p>
+
+  <div class="code">
+<span class="cmt"># Set a value</span>
+curl -v -X PUT localhost:<span class="num">8080</span>/keys/msg -d <span class="str">'"hello"'</span>
+
+<span class="cmt"># Look at the response headers in the verbose output</span>
+<span class="cmt"># You should see: Content-Type, Content-Length, Connection</span>
+
+<span class="cmt"># Verify Content-Length matches the actual body</span>
+curl -s localhost:<span class="num">8080</span>/keys/msg | wc -c
+<span class="cmt"># Should match the Content-Length value</span>
+  </div>
+
+  <h2>Write a unit test</h2>
+  <p>Use a <code>bytes.Buffer</code> as a fake connection — it implements <code>io.Writer</code>. Wrap it to satisfy <code>net.Conn</code>, then inspect the bytes written:</p>
+
+  <div class="code">
+<span class="kw">func</span> <span class="fn">TestWriteResponse</span>(t *testing.<span class="typ">T</span>) {
+    <span class="kw">var</span> buf bytes.<span class="typ">Buffer</span>
+    conn := &amp;<span class="fn">fakeWriteConn</span>{w: &amp;buf}
+    resp := &amp;server.<span class="typ">Response</span>{Status: <span class="num">200</span>, Body: []<span class="typ">byte</span>(<span class="str">`{"ok":true}`</span>)}
+    server.<span class="fn">WriteResponse</span>(conn, resp, <span class="kw">true</span>)
+
+    out := buf.<span class="fn">String</span>()
+    <span class="kw">if</span> !strings.<span class="fn">Contains</span>(out, <span class="str">"HTTP/1.1 200 OK"</span>) {
+        t.<span class="fn">Error</span>(<span class="str">"missing status line"</span>)
+    }
+    <span class="kw">if</span> !strings.<span class="fn">Contains</span>(out, <span class="str">"Content-Length: 11"</span>) {
+        t.<span class="fn">Error</span>(<span class="str">"wrong content-length"</span>)
+    }
+    <span class="kw">if</span> !strings.<span class="fn">Contains</span>(out, <span class="str">`{"ok":true}`</span>) {
+        t.<span class="fn">Error</span>(<span class="str">"missing body"</span>)
+    }
+}
+  </div>
+
+  <h2>Verification checklist</h2>
+  <label class="check"><input type="checkbox"> Status line format: <code>HTTP/1.1 {code} {text}\r\n</code></label>
+  <label class="check"><input type="checkbox"> Content-Length matches <code>len(resp.Body)</code> exactly</label>
+  <label class="check"><input type="checkbox"> Headers and body separated by <code>\r\n\r\n</code> (blank CRLF line)</label>
+  <label class="check"><input type="checkbox"> Connection header is <code>keep-alive</code> or <code>close</code> based on the parameter</label>
+  <label class="check"><input type="checkbox"> WriteError sends <code>Connection: close</code></label>
+
+  <div class="footer">
+    <a href="exercise-04-cache.html" class="nbtn">← Exercise 4</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="exercise-06-wire-together.html" class="nbtn p">Exercise 6 — Wire It All Together →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m04_e05';
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

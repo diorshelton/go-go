@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M1 L2 — The 3-Way Handshake</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .handshake{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;margin:24px 0;font-family:var(--mono);font-size:13px}
+  .hs-row{display:grid;grid-template-columns:1fr 180px 1fr;align-items:center;gap:8px;margin-bottom:14px}
+  .hs-client{text-align:right;color:var(--muted)}.hs-server{text-align:left;color:var(--muted)}
+  .hs-arrow{text-align:center;font-size:12px;color:var(--accent);white-space:nowrap}
+  .hs-label{font-size:11px;font-weight:700;color:var(--text);text-align:center;display:block}
+  .hs-desc{font-size:12px;color:var(--muted);text-align:center;display:block}
+  .hs-header{display:grid;grid-template-columns:1fr 180px 1fr;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .hs-col{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .hs-col.client{text-align:right}.hs-col.server{text-align:left}.hs-col.msg{text-align:center}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);border-color:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 1</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 2 — The 3-Way Handshake</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 01 · Lesson 02 of 03</div>
+  <h1>The 3-Way Handshake</h1>
+  <p class="subtitle">Before a single byte of HTTP data moves, TCP establishes the connection. This takes exactly three messages — no more, no less. Understanding this tells you what <code>Accept()</code> is waiting for and what state the connection is in when it returns.</p>
+
+  <h2>Why a handshake at all?</h2>
+  <p>TCP is a <strong>reliable, ordered</strong> protocol. To deliver those guarantees, both sides need to agree on a starting state before any data flows. Specifically, each side needs to tell the other its starting sequence number — the counter it uses to order bytes — and the other side needs to acknowledge it. That negotiation is the handshake.</p>
+  <p>You don't control any of this from application code. The OS kernel and Go's <code>net</code> package handle it completely. But knowing it happened tells you something important: by the time <code>Accept()</code> returns a <code>net.Conn</code>, the handshake is already done. The connection is fully established. You're not racing anyone.</p>
+
+  <h2>The three messages</h2>
+
+  <div class="handshake">
+    <div class="hs-header">
+      <div class="hs-col client">Client</div>
+      <div class="hs-col msg">Message</div>
+      <div class="hs-col server">Server</div>
+    </div>
+    <div class="hs-row">
+      <div class="hs-client">wants to connect</div>
+      <div class="hs-arrow">
+        <span class="hs-label">SYN →</span>
+        <span class="hs-desc">"I want to connect.<br>My seq starts at X."</span>
+      </div>
+      <div class="hs-server">receives, queues</div>
+    </div>
+    <div class="hs-row">
+      <div class="hs-client">receives, ready</div>
+      <div class="hs-arrow">
+        <span class="hs-label">← SYN-ACK</span>
+        <span class="hs-desc">"Got it. My seq starts at Y.<br>I acknowledge X."</span>
+      </div>
+      <div class="hs-server">sent, waiting</div>
+    </div>
+    <div class="hs-row">
+      <div class="hs-client">connection open</div>
+      <div class="hs-arrow">
+        <span class="hs-label">ACK →</span>
+        <span class="hs-desc">"Got it. I acknowledge Y.<br>Connection established."</span>
+      </div>
+      <div class="hs-server">connection open</div>
+    </div>
+  </div>
+
+  <p>After the ACK, both sides have established sequence numbers, both sides know the other is alive, and data can flow. The next bytes the client sends are application data — in go-go's case, an HTTP request.</p>
+
+  <h2>The listen backlog</h2>
+  <p>Here's something important that happens before <code>Accept()</code> is called: the OS maintains a <strong>backlog queue</strong> of completed connections — connections that have finished the handshake but haven't been handed to your application yet.</p>
+  <p>When you call <code>net.Listen</code>, you're telling the OS to start accepting incoming connection requests and queueing them. When you call <code>Accept()</code>, you're dequeuing one completed connection from that queue. If the queue is empty, <code>Accept()</code> blocks.</p>
+  <p>This is why your accept loop matters: if you accept connections slowly, that queue fills up. New connection requests get dropped by the OS. Your accept loop must be tight — accept the connection and immediately hand it off to a worker, never do slow work in the accept path.</p>
+
+  <div class="callout">
+    <div class="callout-label">What this means for listener.go</div>
+    Your <code>Accept()</code> loop should do exactly two things: call <code>Accept()</code>, then send the connection to the worker pool channel. Nothing else. Parsing, reading, and responding all happen in the workers — never in the accept loop.
+  </div>
+
+  <h2>What Go handles for you</h2>
+  <p>When you call <code>net.Listen("tcp", ":8080")</code>, Go:</p>
+  <ul>
+    <li>Creates a socket and binds it to port 8080</li>
+    <li>Calls the OS <code>listen</code> syscall with a default backlog size</li>
+    <li>Starts the OS's connection acceptance machinery</li>
+  </ul>
+  <p>When a client connects, the OS handles the SYN, sends the SYN-ACK, and waits for the ACK — all in kernel space, invisible to your code. By the time <code>Accept()</code> returns, that work is done. You get a fully-established <code>net.Conn</code>.</p>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">After <code>Accept()</code> returns a <code>net.Conn</code>, is it possible that the connection is not yet established — that the handshake is still in progress?</div>
+    <div class="qh">Think about when in the sequence <code>Accept()</code> returns relative to the three handshake messages.</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>No.</strong> <code>Accept()</code> only returns after a connection has moved from the backlog queue into your application. A connection is only placed in the backlog queue after all three handshake messages are complete — after the OS receives the final ACK. So when you get a <code>net.Conn</code> from <code>Accept()</code>, the connection is fully established. You can immediately call <code>Read()</code> and expect data.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">Why is it critical that your accept loop hands connections off quickly rather than doing any work inline?</div>
+    <div class="qh">Think about the backlog queue and what happens when it fills up.</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Backlog overflow drops new connections.</strong> The OS backlog queue has a fixed capacity. If you're slow to call <code>Accept()</code> — because you're doing parsing or I/O in the accept loop — the queue fills up. When it's full, the OS starts rejecting new SYN packets. Those clients get a connection refused error before your application ever sees them. The fix is to accept immediately and defer all work to goroutines or a worker pool.</div>
+  </div>
+
+  <h2>What's next</h2>
+  <p>In Lesson 3, you'll look at the code: <code>net.Listen</code>, the accept loop, and how connections flow into the worker pool. This is where the architecture in <code>listener.go</code> gets concrete.</p>
+
+  <div class="footer">
+    <a href="lesson-01-tcp-connections.html" class="nbtn">← Lesson 1</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-03-net-listen-accept.html" class="nbtn p">Lesson 3 — net.Listen & Accept →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m01_l02';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

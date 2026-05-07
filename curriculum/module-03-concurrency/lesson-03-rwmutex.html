@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M3 L3 — RWMutex</title>
+<style>
+  :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--accent-dim:#1f6feb;--green:#3fb950;--yellow:#d29922;--orange:#ffa657;--red:#f85149;--radius:6px;--mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}
+  .matrix{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono)}
+  th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04)}tr:last-child td{border-bottom:none}
+  .ok{color:var(--green)}.block{color:var(--red)}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .warn{border-left:3px solid var(--yellow);background:rgba(210,153,34,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .warn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:6px}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 3</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 3 — RWMutex</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 03 · Lesson 03 of 04</div>
+  <h1>RWMutex — Concurrent Reads vs Exclusive Writes</h1>
+  <p class="subtitle">Your in-memory cache is a Go map. Multiple worker goroutines read and write it simultaneously. Without coordination, that's a data race — undefined behavior in Go. <code>sync.RWMutex</code> is the solution, and its design reflects a fundamental insight about read vs write access.</p>
+
+  <h2>Why a plain mutex isn't enough</h2>
+  <p>A <code>sync.Mutex</code> allows only one goroutine at a time — reads and writes alike. That's correct, but overly conservative. Two goroutines doing simultaneous reads of the same map can't corrupt each other — reads don't modify state. Blocking them from running in parallel wastes throughput.</p>
+  <p>An RWMutex distinguishes between two kinds of locks:</p>
+  <ul>
+    <li><strong>Read lock (<code>RLock/RUnlock</code>):</strong> multiple goroutines can hold it simultaneously</li>
+    <li><strong>Write lock (<code>Lock/Unlock</code>):</strong> exclusive — no other goroutine (reader or writer) can hold any lock while a write lock is held</li>
+  </ul>
+
+  <div class="matrix">
+    <table>
+      <tr><th>Lock held by A</th><th>B wants read lock</th><th>B wants write lock</th></tr>
+      <tr><td>Read lock</td><td class="ok">✓ allowed — concurrent reads are safe</td><td class="block">✗ blocked — wait for readers to finish</td></tr>
+      <tr><td>Write lock</td><td class="block">✗ blocked — wait for writer to finish</td><td class="block">✗ blocked — wait for writer to finish</td></tr>
+      <tr><td>No lock</td><td class="ok">✓ allowed</td><td class="ok">✓ allowed</td></tr>
+    </table>
+  </div>
+
+  <h2>The cache implementation</h2>
+
+  <div class="code">
+<span class="kw">type</span> <span class="typ">Store</span> <span class="kw">struct</span> {
+    mu   sync.<span class="typ">RWMutex</span>
+    data <span class="kw">map</span>[<span class="typ">string</span>]json.<span class="typ">RawMessage</span>
+}
+
+<span class="kw">func</span> (s *<span class="typ">Store</span>) <span class="fn">Get</span>(key <span class="typ">string</span>) (json.<span class="typ">RawMessage</span>, <span class="typ">bool</span>) {
+    s.mu.<span class="fn">RLock</span>()
+    <span class="kw">defer</span> s.mu.<span class="fn">RUnlock</span>()
+    v, ok := s.data[key]
+    <span class="kw">return</span> v, ok
+}
+
+<span class="kw">func</span> (s *<span class="typ">Store</span>) <span class="fn">Set</span>(key <span class="typ">string</span>, val json.<span class="typ">RawMessage</span>) {
+    s.mu.<span class="fn">Lock</span>()
+    <span class="kw">defer</span> s.mu.<span class="fn">Unlock</span>()
+    s.data[key] = val
+}
+
+<span class="kw">func</span> (s *<span class="typ">Store</span>) <span class="fn">Delete</span>(key <span class="typ">string</span>) {
+    s.mu.<span class="fn">Lock</span>()
+    <span class="kw">defer</span> s.mu.<span class="fn">Unlock</span>()
+    <span class="kw">delete</span>(s.data, key)
+}
+
+<span class="kw">func</span> (s *<span class="typ">Store</span>) <span class="fn">Keys</span>() []<span class="typ">string</span> {
+    s.mu.<span class="fn">RLock</span>()
+    <span class="kw">defer</span> s.mu.<span class="fn">RUnlock</span>()
+    keys := <span class="fn">make</span>([]<span class="typ">string</span>, <span class="num">0</span>, <span class="fn">len</span>(s.data))
+    <span class="kw">for</span> k := <span class="kw">range</span> s.data {
+        keys = <span class="fn">append</span>(keys, k)
+    }
+    <span class="kw">return</span> keys
+}
+  </div>
+
+  <p>The pattern: <code>RLock()</code> before reading, <code>Lock()</code> before writing. Always paired with the corresponding Unlock, always deferred so panics don't leave locks held.</p>
+
+  <div class="callout">
+    <div class="callout-label">Why defer for Unlock?</div>
+    If your handler panics between <code>Lock()</code> and <code>Unlock()</code> and you don't defer, the lock is never released. Every subsequent goroutine trying to acquire the lock will block forever — a deadlock. <code>defer s.mu.Unlock()</code> guarantees the unlock happens even if the function exits via panic.
+  </div>
+
+  <h2>Never hold a lock while doing I/O</h2>
+  <p>A common mistake: lock the mutex, read from the cache, then write the response to the connection — all while holding the lock. This serializes all responses to the same lock, crushing throughput.</p>
+
+  <div class="code">
+<span class="cmt">// WRONG — holding lock across I/O</span>
+s.mu.<span class="fn">RLock</span>()
+val := s.data[key]
+conn.<span class="fn">Write</span>(val)    <span class="cmt">// slow I/O while holding lock!</span>
+s.mu.<span class="fn">RUnlock</span>()
+
+<span class="cmt">// CORRECT — release lock before I/O</span>
+s.mu.<span class="fn">RLock</span>()
+val := s.data[key]
+s.mu.<span class="fn">RUnlock</span>()   <span class="cmt">// release immediately</span>
+conn.<span class="fn">Write</span>(val)   <span class="cmt">// then do I/O</span>
+  </div>
+
+  <p>Hold locks for the minimum time necessary: acquire, access the shared data, release, then do whatever else needs doing.</p>
+
+  <div class="warn">
+    <div class="warn-label">Never copy a mutex</div>
+    A <code>sync.RWMutex</code> must not be copied after first use. If you pass a <code>Store</code> by value, its mutex is copied — and the copy has independent lock state, defeating the whole purpose. Always pass <code>*Store</code> (pointer), never <code>Store</code> (value).
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">10 goroutines all call <code>store.Get(key)</code> simultaneously. How many of them are blocked?</div>
+    <div class="qh">They all call RLock(). What does the compatibility matrix say about concurrent read locks?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>None.</strong> All 10 goroutines acquire the read lock simultaneously and proceed in parallel. RLock is compatible with other RLocks — that's the entire point of RWMutex. If you used a plain Mutex, 9 of the 10 would block. RWMutex optimizes for the common case in a read-heavy cache: reads are fast and parallel, writes are exclusive but rare.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">A goroutine calls <code>store.Set(key, val)</code>. At the same moment, 10 goroutines are in the middle of <code>store.Get(key)</code>. What happens?</div>
+    <div class="qh">The writer wants a write lock, but readers are holding read locks. What does the write lock do?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>The writer blocks until all readers finish.</strong> Lock() waits until all existing RLocks are released. While the writer is waiting, no new readers can acquire RLock either (this prevents reader starvation of writers). Once all 10 readers call RUnlock(), the writer acquires the exclusive write lock, modifies the map, and releases. Then any new readers can proceed.</div>
+  </div>
+
+  <h2>What's next</h2>
+  <p>Lesson 4 covers race conditions — what actually goes wrong when you access shared state without locks, and how Go's race detector catches it before it causes silent data corruption in production.</p>
+
+  <div class="footer">
+    <a href="lesson-02-worker-pools.html" class="nbtn">← Lesson 2</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-04-race-conditions.html" class="nbtn p">Lesson 4 — Race Conditions →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m03_l03';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>

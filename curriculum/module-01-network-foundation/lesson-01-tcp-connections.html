@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M1 L1 — TCP & Connections</title>
+<style>
+  :root { --bg:#0d1117; --surface:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#388bfd; --accent-dim:#1f6feb; --green:#3fb950; --yellow:#d29922; --red:#f85149; --orange:#ffa657; --purple:#d2a8ff; --radius:6px; --mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .nav{border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  .nav a{color:var(--muted)}.nav a:hover{color:var(--text)}.nav-sep{color:var(--border)}.nav-cur{color:var(--text)}
+  .wrap{max-width:740px;margin:0 auto;padding:48px 24px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  h1{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;line-height:1.3}
+  .subtitle{color:var(--muted);font-size:15px;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  h2{font-size:18px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--border)}
+  p{margin-bottom:16px}
+  ul,ol{margin:0 0 16px 20px}li{margin-bottom:6px}
+  strong{color:var(--text);font-weight:600}
+  .code{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin:20px 0;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+  .code .kw{color:#ff7b72}.code .fn{color:#d2a8ff}.code .str{color:#a5d6ff}.code .cmt{color:#8b949e;font-style:italic}.code .typ{color:#ffa657}
+  code{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--orange)}
+  .callout{border-left:3px solid var(--accent);background:rgba(56,139,253,.08);border-radius:0 var(--radius) var(--radius) 0;padding:14px 18px;margin:24px 0;font-size:14px}
+  .callout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);margin-bottom:6px}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:24px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--muted);text-align:center}
+  .diagram .lb{color:var(--text);font-weight:600}.diagram .ar{color:var(--accent)}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:32px 0}
+  .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--yellow);margin-bottom:12px}
+  .qt{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+  .qh{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:14px}
+  .rbtn{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+  .rbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .ans{display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:14px;line-height:1.7;color:var(--muted)}
+  .ans.open{display:block}.ans strong{color:var(--green)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border)}
+  .nbtn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--muted);padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s,color .15s}
+  .nbtn:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+  .nbtn.p{background:var(--accent);border-color:var(--accent);color:#fff}.nbtn.p:hover{background:var(--accent-dim);border-color:var(--accent-dim);color:#fff}
+  .done-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:background .15s}
+  .done-btn:hover{background:rgba(63,185,80,.1)}.done-btn.done{background:rgba(63,185,80,.15)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../dashboard.html">Dashboard</a><span class="nav-sep">›</span>
+  <a href="#">Module 1 — The Network Foundation</a><span class="nav-sep">›</span>
+  <span class="nav-cur">Lesson 1 — TCP & Connections</span>
+</nav>
+<main class="wrap">
+  <div class="eyebrow">Module 01 · Lesson 01 of 03</div>
+  <h1>TCP & Connections</h1>
+  <p class="subtitle">Before you can parse an HTTP request, you need to understand what's delivering those bytes to your program. That's TCP — and understanding it changes how you think about everything above it.</p>
+
+  <h2>What is a connection, actually?</h2>
+  <p>When someone says "the client sends a request to the server," that description skips the most important part. There's no single moment where bytes are teleported from one machine to another. First, a <strong>connection is established</strong> — a dedicated channel between two endpoints — and then bytes flow through it.</p>
+  <p>That channel is a TCP connection. TCP stands for Transmission Control Protocol, and it has one job: guarantee that bytes sent from one end arrive at the other, in order, without duplication. It handles retransmission, ordering, and flow control so that higher layers — like HTTP — don't have to.</p>
+
+  <div class="callout">
+    <div class="callout-label">Why this matters for go-go</div>
+    In go-go, your server calls <code>net.Listen</code> and then <code>Accept()</code> in a loop. Each call to <code>Accept()</code> returns one TCP connection — one of these dedicated channels. Everything you do afterward (reading bytes, parsing the request, writing the response) happens on that single connection object.
+  </div>
+
+  <h2>The connection as a bidirectional pipe</h2>
+  <p>The most useful mental model: a TCP connection is a <strong>bidirectional pipe</strong>. Once open, you write bytes into one end and they come out the other, in order, with no gaps. The pipe stays open until one side closes it.</p>
+
+  <div class="diagram">
+    <div><span class="lb">Client</span></div>
+    <div><span class="ar">──── bytes flow this way ────→</span></div>
+    <div><span class="ar">←─── bytes flow this way ────</span></div>
+    <div><span class="lb">Your go-go server process</span></div>
+  </div>
+
+  <p>This is important: the pipe is <strong>persistent</strong>. You don't open and close it for every chunk of data. HTTP/1.1 takes advantage of this — multiple requests can travel over the same connection, one after another. That's what keep-alive means. We'll get there in Module 2.</p>
+
+  <h2>How Go exposes this</h2>
+  <p>Go's <code>net</code> package wraps TCP connections behind the <code>net.Conn</code> interface. Once you have one, you interact with it using three methods:</p>
+
+  <div class="code">
+<span class="kw">type</span> <span class="typ">Conn</span> <span class="kw">interface</span> {
+    <span class="fn">Read</span>(b []<span class="typ">byte</span>) (<span class="typ">int</span>, <span class="typ">error</span>)    <span class="cmt">// pull bytes off the wire</span>
+    <span class="fn">Write</span>(b []<span class="typ">byte</span>) (<span class="typ">int</span>, <span class="typ">error</span>)   <span class="cmt">// push bytes onto the wire</span>
+    <span class="fn">Close</span>() <span class="typ">error</span>                    <span class="cmt">// close the connection</span>
+    <span class="fn">SetDeadline</span>(t time.Time) <span class="typ">error</span>  <span class="cmt">// enforce a read/write timeout</span>
+    <span class="cmt">// ... plus SetReadDeadline, SetWriteDeadline</span>
+}
+  </div>
+
+  <p><code>Read</code> <strong>blocks</strong> until bytes arrive or the connection closes. This is the most important behavior to internalize — your parser will call <code>Read</code> repeatedly, and each call waits for more data from the client. <code>Write</code> sends bytes. <code>Close</code> tears down the connection.</p>
+  <p>That's the entire API surface you'll use in <code>listener.go</code> and <code>parser.go</code>. No magic. Just reads, writes, and a close.</p>
+
+  <h2>One connection per client, and the concurrency problem</h2>
+  <p>Here's the constraint that forces go-go's design: if <code>Read</code> blocks, and you need to handle many connections simultaneously, you can't do it in a single goroutine. You need concurrency.</p>
+  <p>The naive answer is: spawn a goroutine per connection. But go-go uses a <strong>fixed worker pool</strong> instead. There's a reason for that choice — think it through below before we move on.</p>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">If <code>Read</code> blocks waiting for bytes, what problem does handling connections one at a time in a single loop create?</div>
+    <div class="qh">Imagine 100 clients connect simultaneously. Connection #1 is slow. What happens to connections #2 through #100?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>The server stalls.</strong> If you handle connections sequentially — accept one, read from it until it closes, then accept the next — a slow or idle client blocks every other client. Connection #2 cannot be served until connection #1 finishes. This is why concurrency is necessary: you need to <code>Read</code> from many connections simultaneously without any one blocking the others.</div>
+  </div>
+
+  <div class="q">
+    <div class="ql">Think it through</div>
+    <div class="qt">go-go uses a fixed pool of N goroutines instead of spawning a new goroutine per connection. What does that limit protect against?</div>
+    <div class="qh">Goroutines are cheap — but not free. What happens if 100,000 clients connect and you spawn 100,000 goroutines?</div>
+    <button class="rbtn" onclick="toggle(this)">Show answer</button>
+    <div class="ans"><strong>Unbounded resource consumption.</strong> Each goroutine costs a few KB of stack memory and adds scheduler overhead. 100,000 goroutines consumes hundreds of megabytes just in stack space, and the scheduler's work grows with the count. A fixed pool caps this: N goroutines, no more. If more connections arrive than workers can handle, they wait in a channel. You trade some latency under extreme load for predictable, bounded memory usage. That's what the SPEC means by "explicit and observable concurrency."</div>
+  </div>
+
+  <h2>What's next</h2>
+  <p>In Lesson 2, we examine the 3-way handshake — the exact sequence that establishes a TCP connection before any application data flows. Understanding it tells you what state the connection is in when <code>Accept()</code> returns, and what guarantees you have about it.</p>
+
+  <div class="footer">
+    <a href="../dashboard.html" class="nbtn">← Dashboard</a>
+    <button class="done-btn" id="db" onclick="markDone()">Mark complete</button>
+    <a href="lesson-02-three-way-handshake.html" class="nbtn p">Lesson 2 — The 3-Way Handshake →</a>
+  </div>
+</main>
+<script>
+var KEY='gogo_m01_l01';
+function toggle(btn){var a=btn.nextElementSibling;a.classList.toggle('open');btn.textContent=a.classList.contains('open')?'Hide answer':'Show answer';}
+function markDone(){localStorage.setItem(KEY,'1');var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');var s=parseInt(localStorage.getItem('gogo_sessions')||'0',10);localStorage.setItem('gogo_sessions',s+1);}
+(function(){if(localStorage.getItem(KEY)){var b=document.getElementById('db');b.textContent='✓ Complete';b.classList.add('done');}})();
+</script>
+</body>
+</html>
