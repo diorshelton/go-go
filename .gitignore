@@ -1,4 +1,7 @@
 
+# Build output
+main
+
 # Compiled binaries and plugins
 *.exe
 *.exe~
