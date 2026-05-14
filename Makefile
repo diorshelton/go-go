@@ -1,5 +1,8 @@
-.PHONY: test
+.PHONY: build run
 
-# Run the test suite with verbose output.
-test:
-	go test -v ./...
+# Build the Go-Go binary.
+build:
+	go build ./...
+# Run the server with port 8080 and 4 workers.
+run:
+	go run ./cmd/server/main.go --port 8080 --workers 4

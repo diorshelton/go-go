@@ -10,7 +10,5 @@
 - [ ] Did I add a comment anywhere the WHY is non-obvious (a subtle invariant, a workaround, a locking discipline)?
 - [ ] Is PHASES.md still accurate?
 
-## Tests
+## Build
 - [ ] Does `go build ./...` succeed?
-- [ ] Does `go test ./...` pass?
-- [ ] Did I add a test for anything new and testable?

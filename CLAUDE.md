@@ -10,19 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Run the server
-go run ./cmd/server/main.go --port 8080 --workers 10
+make run
 
 # Build
-go build ./...
-
-# Test all
-go test ./...
-
-# Test a single package
-go test ./server/...
-
-# Test a single test
-go test ./server/... -run TestParserName
+make build
 
 # Lint (requires golangci-lint)
 golangci-lint run

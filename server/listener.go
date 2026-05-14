@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 )
 
@@ -28,10 +27,7 @@ func Run(port string, workers int) {
 		listener.Close()
 	}()
 
-	connChan := make(chan net.Conn, workers)
-
-	var wg sync.WaitGroup
-	startWorkers(&wg, connChan, workers)
+	pool := NewPool(workers, &Router{})
 
 	for {
 		conn, err := listener.Accept()
@@ -40,25 +36,7 @@ func Run(port string, workers int) {
 			break
 		}
 
-		connChan <- conn
+		pool.Submit(conn)
 	}
-	//Close before wait to prevent deadlock between channel closing and workers finishing tasks
-	close(connChan)
-	wg.Wait()
-
-}
-
-func startWorkers(wg *sync.WaitGroup, channel chan net.Conn, workers int) {
-	for i := 1; i <= workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for conn := range channel {
-				handleConn(conn)
-			}
-		}()
-	}
-}
-
-func handleConn(conn net.Conn) {
+	pool.Shutdown()
 }
