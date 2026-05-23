@@ -15,6 +15,7 @@ type Request struct {
 	ProtocolVer string
 	Body        []byte
 	Headers     map[string]string
+	Params      map[string]string
 }
 
 var validMethods = []string{"GET", "PUT", "DELETE"}
