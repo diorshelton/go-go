@@ -27,7 +27,6 @@ func Parser(conn io.Reader) (*Request, error) {
 		return nil, errors.New("400 bad request- input")
 	}
 
-	//Clean trailing HTTP line endings (\r\n)
 	input = strings.TrimSpace(input)
 
 	parts := strings.SplitN(input, " ", 3)
@@ -37,19 +36,16 @@ func Parser(conn io.Reader) (*Request, error) {
 
 	method, target, version := parts[0], parts[1], parts[2]
 
-	//Validate Request Method
 	if !slices.Contains(validMethods, method) {
 		return nil, errors.New("400 bad request - invalid method")
 	}
 
-	//Validate Protocol Version
 	if version != "HTTP/1.1" {
 		return nil, errors.New("400 bad request - invalid protocol version")
 	}
 
 	headers := make(map[string]string)
 
-	//Parse headers line by line
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -58,7 +54,7 @@ func Parser(conn io.Reader) (*Request, error) {
 
 		line = strings.TrimRight(line, "\r\n")
 		if line == "" {
-			break //blank line = end of headers
+			break
 		}
 
 		idx := strings.IndexByte(line, ':')
@@ -80,7 +76,6 @@ func Parser(conn io.Reader) (*Request, error) {
 		Headers:     headers,
 	}
 
-	//Parse Body
 	if contentLengthStr, ok := headers["content-length"]; ok {
 		contentLength, err := strconv.Atoi(contentLengthStr)
 		if err != nil || contentLength < 0 {
