@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-func Run(port string, workers int) {
+func Run(port string, workers int, router *Router) {
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Panicf("Server error: %v", err)
@@ -27,7 +27,7 @@ func Run(port string, workers int) {
 		listener.Close()
 	}()
 
-	pool := NewPool(workers, &Router{})
+	pool := NewPool(workers, router)
 
 	for {
 		conn, err := listener.Accept()

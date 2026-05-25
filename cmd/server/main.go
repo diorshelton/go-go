@@ -12,5 +12,7 @@ func main() {
 
 	flag.Parse()
 
-	server.Run(*portPtr, *workersPtr)
+	var router server.Router
+
+	server.Run(*portPtr, *workersPtr, &router)
 }
