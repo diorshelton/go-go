@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"net"
 	"sync"
 )
@@ -44,11 +43,21 @@ func (p *Pool) Shutdown() {
 func (p *Pool) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
-
-	line, err := reader.ReadString('\n')
+	request, err := Parser(conn)
 	if err != nil {
+		response := "HTTP/1.1 400 Bad Request\r\n\r\n"
+		conn.Write([]byte(response))
 		return
 	}
-	_ = line
+
+	handlerFunc, _ := p.router.Match(request)
+	if handlerFunc == nil {
+		response := "HTTP/1.1 404 Not Found\r\n\r\n"
+		conn.Write([]byte(response))
+		return
+	}
+
+	_ = handlerFunc(request)
+	response := "HTTP/1.1 200 OK \r\n\r\n"
+	conn.Write([]byte(response))
 }
