@@ -43,21 +43,25 @@ func (p *Pool) Shutdown() {
 func (p *Pool) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	request, err := Parser(conn)
+	request, err := Parse(conn)
 	if err != nil {
-		response := "HTTP/1.1 400 Bad Request\r\n\r\n"
-		conn.Write([]byte(response))
+		response := Response{StatusCode: 400, Body: nil}
+		conn.Write(response.Serialize())
 		return
 	}
 
-	handlerFunc, _ := p.router.Match(request)
+	handlerFunc, params := p.router.Match(request)
 	if handlerFunc == nil {
-		response := "HTTP/1.1 404 Not Found\r\n\r\n"
-		conn.Write([]byte(response))
+		response := Response{StatusCode: 404, Body: nil}
+		conn.Write(response.Serialize())
 		return
 	}
 
-	_ = handlerFunc(request)
-	response := "HTTP/1.1 200 OK \r\n\r\n"
-	conn.Write([]byte(response))
+	request.Params = params
+
+	responseReturn := handlerFunc(request)
+
+	response := responseReturn.Serialize()
+
+	conn.Write(response)
 }

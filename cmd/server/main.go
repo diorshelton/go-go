@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"go-go/cache"
+	"go-go/handlers"
 	"go-go/server"
 )
 
@@ -13,6 +15,10 @@ func main() {
 	flag.Parse()
 
 	var router server.Router
+
+	store := cache.New()
+
+	router.Register("GET", "/keys", handlers.HandleGetAll(store))
 
 	server.Run(*portPtr, *workersPtr, &router)
 }
