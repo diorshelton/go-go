@@ -20,7 +20,7 @@ type Request struct {
 
 var validMethods = []string{"GET", "PUT", "DELETE"}
 
-func Parser(conn io.Reader) (*Request, error) {
+func Parse(conn io.Reader) (*Request, error) {
 	reader := bufio.NewReader(conn)
 
 	input, err := reader.ReadString('\n')
