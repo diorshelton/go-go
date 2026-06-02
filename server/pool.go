@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"net"
 	"sync"
 )
@@ -44,11 +43,25 @@ func (p *Pool) Shutdown() {
 func (p *Pool) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
-
-	line, err := reader.ReadString('\n')
+	request, err := Parse(conn)
 	if err != nil {
+		response := Response{StatusCode: 400, Body: nil}
+		conn.Write(response.Serialize())
 		return
 	}
-	_ = line
+
+	handlerFunc, params := p.router.Match(request)
+	if handlerFunc == nil {
+		response := Response{StatusCode: 404, Body: nil}
+		conn.Write(response.Serialize())
+		return
+	}
+
+	request.Params = params
+
+	responseReturn := handlerFunc(request)
+
+	response := responseReturn.Serialize()
+
+	conn.Write(response)
 }
