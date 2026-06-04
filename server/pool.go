@@ -3,6 +3,7 @@ package server
 import (
 	"net"
 	"sync"
+	"time"
 )
 
 type Pool struct {
@@ -43,25 +44,41 @@ func (p *Pool) Shutdown() {
 func (p *Pool) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	request, err := Parse(conn)
-	if err != nil {
-		response := Response{StatusCode: 400, Body: nil}
-		conn.Write(response.Serialize())
-		return
+	for {
+		conn.SetDeadline(time.Now().Add(30 * time.Second))
+
+		request, err := Parse(conn)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				break
+			}
+			response := Response{StatusCode: 400, Body: nil}
+			conn.Write(response.Serialize())
+			break
+		}
+
+		handlerFunc, params := p.router.Match(request)
+		if handlerFunc == nil {
+			response := Response{StatusCode: 404, Body: nil}
+			_, writeErr := conn.Write(response.Serialize())
+			if writeErr != nil {
+				break
+			}
+			continue
+		}
+
+		request.Params = params
+
+		response := handlerFunc(request)
+
+		_, writeErr := conn.Write(response.Serialize())
+		if writeErr != nil {
+			break
+		}
+
+		if request.Headers["connection"] == "close" {
+			break
+		}
+
 	}
-
-	handlerFunc, params := p.router.Match(request)
-	if handlerFunc == nil {
-		response := Response{StatusCode: 404, Body: nil}
-		conn.Write(response.Serialize())
-		return
-	}
-
-	request.Params = params
-
-	responseReturn := handlerFunc(request)
-
-	response := responseReturn.Serialize()
-
-	conn.Write(response)
 }
