@@ -12,6 +12,7 @@ type Response struct {
 
 var StatusLookUp = map[int]string{
 	200: "OK",
+	201: "Created",
 	400: "Bad Request",
 	404: "Not Found",
 	500: "Internal Server Error",

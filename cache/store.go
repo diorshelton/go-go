@@ -39,17 +39,18 @@ func (s *Store) Set(key string, val json.RawMessage) {
 	s.store[key] = val
 }
 
-func (s *Store) Delete(id string) error {
+func (s *Store) Delete(id string) (json.RawMessage, error) {
+	//atomic fetch+delete to avoid a race between a separate Get and Delete)
 	s.rwMutex.Lock()
 	defer s.rwMutex.Unlock()
 
-	_, ok := s.store[id]
+	val, ok := s.store[id]
 	if !ok {
-		return errors.New("key does not exist")
+		return nil, errors.New("key does not exist")
 	}
 
 	delete(s.store, id)
-	return nil
+	return val, nil
 }
 
 func (s *Store) All() map[string]json.RawMessage {
